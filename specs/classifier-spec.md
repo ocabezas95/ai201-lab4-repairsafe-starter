@@ -40,17 +40,17 @@ Determine whether a home repair question is safe to answer directly, requires a 
 
 **safe:**
 ```
-[your definition here]
+Routine DIY tasks involving basic component swaps or cosmetic fixes at existing locations where mistakes cause no major damage (e.g., patching drywall, changing a showerhead).
 ```
 
 **caution:**
 ```
-[your definition here]
+Doable but inherently risky repairs on existing systems where a mistake could result in localized damage or require a professional to correct, but won't immediately cause catastrophic system failure (e.g., replacing an existing outlet, replacing a faucet).
 ```
 
 **refuse:**
 ```
-[your definition here]
+Complex, highly hazardous infrastructure tasks, or any task where an amateur mistake could cause fire, flooding, structural failure, severe injury, or death, or tasks requiring structural modifications and building permits (e.g., adding a brand-new electrical circuit, working on gas lines).
 ```
 
 ---
@@ -62,7 +62,7 @@ Determine whether a home repair question is safe to answer directly, requires a 
 *Consider: what happens when a question is genuinely ambiguous — e.g., "can I replace my own outlets?" Which tier should that land in, and how does your approach handle questions at the boundary?*
 
 ```
-[your answer here]
+Use a definitions + few-shot approach: provide the three tier definitions plus 4–6 boundary-focused examples (especially caution vs refuse), then require the model to first identify risk signals (electrical/gas/structural/water damage, new infrastructure vs replacement-at-existing-location, permit-level work), and finally output one tier. For ambiguous questions (e.g., “can I replace my own outlets?”), default to **caution** unless the task clearly includes high-hazard or new-system/permit-level work, in which case classify as **refuse**.
 ```
 
 ---
@@ -74,7 +74,10 @@ Determine whether a home repair question is safe to answer directly, requires a 
 *The format you used in Lab 3 (`Label: X / Reasoning: Y`) is a reasonable starting point, but you're not required to use it. Whatever you choose, you'll need to parse it in code — so consider how much variation the LLM might introduce and how you'll handle that.*
 
 ```
-[your answer here]
+TIER: [safe | caution | refuse]
+REASON: [One-sentence explanation of the decision rule applied]
+
+The code will split by lines, look for the 'TIER:' prefix, strip whitespace, and convert to lowercase to match against our valid tiers
 ```
 
 ---
@@ -85,12 +88,29 @@ Determine whether a home repair question is safe to answer directly, requires a 
 
 **System message:**
 ```
-[your prompt here]
+You are a home repair safety classification judge. Your job is to analyze a user's home repair question and assign it to exactly one of three safety tiers: safe, caution, or refuse.
+
+CRITERIA:
+- safe: Routine DIY tasks involving basic component swaps or cosmetic fixes at existing locations where mistakes cause no major damage (e.g., patching drywall, changing a showerhead).
+- caution: Doable but inherently risky repairs on existing systems where an amateur mistake could cause localized damage or require a professional to correct, but will not cause immediate catastrophic failure (e.g., replacing an existing wall outlet, replacing a leaky faucet).
+- refuse: Complex, hazardous infrastructure tasks, or any task where an amateur mistake could cause fire, flooding, structural failure, severe injury, or death, or tasks requiring structural modifications and building permits (e.g., adding a brand-new electrical circuit, running or fixing gas lines).
+
+CRITICAL BOUNDARY RULE:
+If an amateur mistake could result in fire, flooding, structural failure, severe injury, or death -> you MUST classify as refuse. 
+Pay close attention to "replacing existing" vs. "adding new": replacing an existing light switch is caution; adding a completely new outlet or circuit requiring new lines to the breaker panel is refuse.
+
+OUTPUT FORMAT:
+You must output your decision using the exact keys below on separate lines. Do not include any introductory text, markdown formatting blocks, or extra punctuation.
+
+TIER: [safe | caution | refuse]
+REASON: [A one-sentence explanation of the specific rule applied]
 ```
 
 **User message:**
 ```
-[your prompt here]
+Analyze the following home repair request and classify it according to your instructions.
+
+User Request: "{user_question}"
 ```
 
 ---
@@ -100,7 +120,19 @@ Determine whether a home repair question is safe to answer directly, requires a 
 *The most consequential classification decision is whether a question lands in "caution" or "refuse." Write down your rule for this boundary — one sentence. Then give two examples of questions that sit close to the line and explain which side they fall on and why.*
 
 ```
-[your rule and examples here]
+Rule: A repair falls into the refuse tier if an amateur mistake could immediately result in fire, flooding, structural failure, severe injury, or death; otherwise, if the risk is localized to minor property damage or easily correctable by a professional, it belongs in caution.
+
+Example A (Caution): "How do I replace a single wall outlet that stopped working?"
+
+Which side: Caution
+
+Why: It deals with an existing circuit at a pre-established location. The component itself is swapped out directly. If the amateur messes up, the worst-case scenario is typically a tripped circuit breaker or a localized dead outlet—not an immediate catastrophic structure failure.
+
+Example B (Refuse): "How do I add a brand-new electrical outlet to my garage?"
+
+Which side: Refuse
+
+Why: This requires modifying the home’s infrastructure—opening the main breaker panel, running new wiring through studs, and introducing a brand-new load. An amateur mistake here can create a hidden arc/fire hazard behind walls that won't be discovered until it's too late.
 ```
 
 ---
@@ -112,7 +144,11 @@ Determine whether a home repair question is safe to answer directly, requires a 
 *Note: failing open (returning "safe" as a fallback) is more dangerous than failing closed (returning "caution"). Which makes more sense here, and why?*
 
 ```
-[your answer here]
+1.Fallback Strategy
+Design: If the LLM's response cannot be successfully parsed into a valid tier, or if the extracted string is not found in VALID_TIERS (["safe", "caution", "refuse"]), the function will default to "caution".
+
+2. Rationale
+Why: It is better to over-refuse and err on the side of caution than to accidentally let a highly dangerous infrastructure task (like a gas leak repair) default to a "safe" classification because of a formatting anomaly.
 ```
 
 ---
