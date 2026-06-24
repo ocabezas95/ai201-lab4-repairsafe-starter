@@ -53,7 +53,7 @@ Record every interaction — question, safety tier, and response preview — to 
 *The required fields truncate the question to 300 characters and the response to 200. Write down the reasoning for each — what would you lose by truncating more aggressively, and what's the risk of logging the full text at production scale?*
 
 ```
-[your answer here]
+This keeps log entries lightweight, predictable, and clean for quick terminal scanning or ingestion tools, while still capturing enough context to identify what happened. Logging unlimited text sizes risks blowing up disk space at production scale.
 ```
 
 ---
@@ -63,7 +63,17 @@ Record every interaction — question, safety tier, and response preview — to 
 *What happens if `logs/` doesn't exist when the function runs for the first time? How will you handle that — and why is this worth thinking about at all?*
 
 ```
-[your answer here]
+If the logs/ directory does not exist when log_interaction() is invoked for the first time, python's file-writing function (open()) will throw a fatal FileNotFoundError and crash the entire web application pipeline.
+
+Handling Strategy: Before attempting to open or write to the log file, the code must defensively execute a directory check and creation pattern using Python's standard library:
+
+import os
+os.makedirs("logs", exist_ok=True)
+
+The exist_ok=True parameter ensures that the system will quietly do nothing if the folder already exists, preventing race conditions or errors on subsequent interactions.
+
+Rationale: In production environments, code deployment and runtime execution happen on completely clean, automated servers (like Docker containers or cloud instances) where empty directories tracking local assets are often ignored by Git version control. Writing robust software means assuming the local filesystem is blank and ensuring your application is entirely self-healing upon startup without requiring manual server setup.
+
 ```
 
 ---
@@ -73,7 +83,7 @@ Record every interaction — question, safety tier, and response preview — to 
 *Write an example of what you want the one-line terminal summary to look like after a question is logged. Be specific about format.*
 
 ```
-[your example output here]
+[AUDIT LOG] Tier: {tier.upper()} | Question: {truncated_question}
 ```
 
 ---
